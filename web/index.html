@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>海洋牧场养殖环境监测 · Marine Farm Monitor</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <h1>海洋牧场养殖环境监测</h1>
+      <span class="brand-sub">Marine Farm Environment Monitor</span>
+    </div>
+    <nav class="main-nav" id="main-nav">
+      <a href="/" data-link class="nav-link">牧场总览</a>
+      <a href="/warnings" data-link class="nav-link">预警台</a>
+      <a href="/aeration" data-link class="nav-link">增氧控制</a>
+      <a href="/logs" data-link class="nav-link">养殖日志</a>
+    </nav>
+    <div class="header-meta">
+      <span id="clock" class="clock"></span>
+      <span class="health-pill" id="health-pill">…</span>
+    </div>
+  </header>
+  <main id="app" class="app-main">
+    <div class="page-loading">加载中…</div>
+  </main>
+  <footer class="app-footer">
+    <span>example.com/marine-farm-environment-service</span>
+    <span>go:embed 原生前端 · 离线可运行</span>
+  </footer>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
