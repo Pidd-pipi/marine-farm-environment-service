@@ -1,0 +1,10 @@
+# runtime persistence artifacts
+data/
+*.tmp
+*.bak
+*.log
+
+# build artifacts
+bin/
+*.test
+marine-farm-environment-service
