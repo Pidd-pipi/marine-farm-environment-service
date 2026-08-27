@@ -68,6 +68,9 @@ func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
 		return fmt.Errorf("store: close tmp: %w", err)
 	}
 	if err := os.Rename(tmpName, path); err != nil {
+		// The temp file is already closed but still on disk; remove it so a
+		// failed rename does not leave stale tmp files behind.
+		_ = os.Remove(tmpName)
 		return fmt.Errorf("store: rename: %w", err)
 	}
 
@@ -81,9 +84,21 @@ func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
 
 // backupCorruptFile copies the unreadable snapshot to path.bak so it can be
 // inspected later. It never overwrites an existing backup from an earlier
-// incident.
+// incident: the first corrupt snapshot goes to path.bak, and any further
+// one is parked at path.bak.1, path.bak.2, ... so no evidence is lost.
 func backupCorruptFile(path string, data []byte) error {
 	backup := path + ".bak"
+	if _, err := os.Stat(backup); err == nil {
+		// A backup already exists from a prior incident; find the next free
+		// numbered slot rather than clobbering it.
+		for i := 1; ; i++ {
+			candidate := fmt.Sprintf("%s.bak.%d", path, i)
+			if _, err := os.Stat(candidate); err != nil {
+				backup = candidate
+				break
+			}
+		}
+	}
 	return writeFileAtomic(backup, data, 0o644)
 }
 

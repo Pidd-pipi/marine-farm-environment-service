@@ -10,13 +10,16 @@ import (
 type AuditStore struct{ s *Store }
 
 // Create persists a new audit entry. The audit trail is capped to
-// maxEntries (oldest entries are dropped) to bound memory growth.
+// maxEntries: when the cap is exceeded the oldest entries are evicted so
+// the most recent activity is always retained.
 func (a *AuditStore) Create(entry *domain.AuditEntry, maxEntries int) error {
 	a.s.mu.Lock()
 	defer a.s.mu.Unlock()
 	a.s.state.Audit = append(a.s.state.Audit, *entry)
 	if maxEntries > 0 && len(a.s.state.Audit) > maxEntries {
-		a.s.state.Audit = a.s.state.Audit[:maxEntries]
+		// Drop the oldest surplus entries from the front; the freshly
+		// appended (newest) entry is always kept.
+		a.s.state.Audit = a.s.state.Audit[len(a.s.state.Audit)-maxEntries:]
 	}
 	return a.s.saveLocked()
 }

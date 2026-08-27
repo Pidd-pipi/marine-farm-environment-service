@@ -1,6 +1,7 @@
 package service
 
 import (
+	"log/slog"
 	"time"
 
 	"example.com/marine-farm-environment-service/domain"
@@ -23,14 +24,19 @@ func NewAuditService(st *store.Store) *AuditService {
 }
 
 // Record writes one audit entry and returns it.
-func (a *AuditService) Record(action domain.AuditAction, targetType, targetID, operator, detail, requestID string, at time.Time) (out domain.AuditEntry, err error) {
-	defer func() {
-		// Audit trail failures are best-effort and must not fail the caller.
-		err = nil
-	}()
+//
+// Audit trail writes are best-effort: a failure here must never roll back
+// the business action that triggered it. But the failure is surfaced — both
+// logged, so it shows up in operations, and returned, so callers that *do*
+// care (batch ingestion, durability checks) can see it instead of being
+// told everything succeeded.
+func (a *AuditService) Record(action domain.AuditAction, targetType, targetID, operator, detail, requestID string, at time.Time) (domain.AuditEntry, error) {
 	entry := domain.NewAuditEntry(a.store.NewID("audit"), action, targetType, targetID, operator, detail, at)
 	entry.RequestID = requestID
 	if cerr := a.store.Audit().Create(entry, maxAuditEntries); cerr != nil {
+		slog.Error("audit: record failed",
+			"action", string(action), "target_type", targetType, "target_id", targetID,
+			"operator", operator, "request_id", requestID, "error", cerr)
 		return domain.AuditEntry{}, cerr
 	}
 	return *entry, nil
