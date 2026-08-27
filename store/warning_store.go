@@ -37,11 +37,16 @@ func (w *WarningStore) Get(id string) (domain.WarningRecord, error) {
 	return domain.WarningRecord{}, domain.NotFound("warning record", id)
 }
 
-// List returns warnings matching the filter, newest first.
+// List returns warnings matching the filter, newest first. The result is a
+// fresh slice of defensive copies; callers must never receive entities that
+// alias the store's internal state, so filtering never truncates or reorders
+// the underlying slice (an earlier version reused state.Warnings[:0], which
+// silently dropped non-matching records from the store and made repeated list
+// queries return inconsistent, shrinking result sets).
 func (w *WarningStore) List(f WarningFilter) []domain.WarningRecord {
 	w.s.mu.RLock()
 	defer w.s.mu.RUnlock()
-	out := w.s.state.Warnings[:0]
+	out := make([]domain.WarningRecord, 0, len(w.s.state.Warnings))
 	for i := range w.s.state.Warnings {
 		rec := w.s.state.Warnings[i]
 		if f.ZoneID != "" && rec.ZoneID != f.ZoneID {
@@ -53,7 +58,7 @@ func (w *WarningStore) List(f WarningFilter) []domain.WarningRecord {
 		if f.Type != "" && string(rec.Type) != f.Type {
 			continue
 		}
-		out = append(out, rec)
+		out = append(out, cloneWarningRecord(rec))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ReportedAt.After(out[j].ReportedAt) })
 	if f.Limit > 0 && len(out) > f.Limit {

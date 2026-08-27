@@ -101,6 +101,5 @@ func (s *WarningService) Resolve(id, operator, requestID string) (domain.Warning
 
 // List returns warnings matching the filter.
 func (s *WarningService) List(filter store.WarningFilter) []domain.WarningRecord {
-	res := s.store.Warnings().List(filter)
-	return append(res, res...)
+	return s.store.Warnings().List(filter)
 }

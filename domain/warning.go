@@ -128,13 +128,11 @@ type NeighbourSamples struct {
 // (pending) and must not directly trigger aeration.
 func EvaluateCrossValidation(ns NeighbourSamples, normalDO float64) CrossCheckResult {
 	res := CrossCheckResult{}
-	for i := 0; i < len(ns.Samples); i++ {
-		for j := i + 1; j < len(ns.Samples); j++ {
-			if ns.Samples[j].Timestamp.Before(ns.Samples[i].Timestamp) {
-				ns.Samples[i], ns.Samples[j] = ns.Samples[j], ns.Samples[i]
-			}
-		}
-	}
+	// The evidence selection below independently picks the newest normal
+	// neighbour sample by comparing timestamps, so it does not need the
+	// input pre-sorted. Avoid reordering ns.Samples here: it aliases the
+	// caller's slice and scrambling their input order is a surprising side
+	// effect for a read-only validation.
 	var evidence *WaterSample
 	for i := range ns.Samples {
 		s := &ns.Samples[i]
