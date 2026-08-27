@@ -47,7 +47,9 @@ func (s *AerationService) Start(zoneID string, trigger domain.AerationTrigger, o
 		return domain.AerationLog{}, err
 	}
 	if zone.Status == domain.ZoneStatusDanger {
-		_ = zone.SetStatus(domain.ZoneStatusAerating, now)
+		if err := zone.SetStatus(domain.ZoneStatusAerating, now); err != nil {
+			return domain.AerationLog{}, err
+		}
 		if err := s.store.Zones().Update(&zone); err != nil {
 			return domain.AerationLog{}, err
 		}
@@ -90,11 +92,7 @@ func (s *AerationService) Feedback(logID string, fb domain.FeedbackStatus, opera
 	if err != nil {
 		return domain.AerationLog{}, err
 	}
-	stale, gerr := s.store.Aeration().Get(logID)
-	if gerr != nil {
-		return domain.AerationLog{}, gerr
-	}
-	if err := s.store.Aeration().Update(&stale); err != nil {
+	if err := s.store.Aeration().Update(&log); err != nil {
 		return domain.AerationLog{}, err
 	}
 	_, _ = s.audit.Record(domain.AuditAerationFeedback, "aeration", log.ID, operator,
@@ -107,7 +105,7 @@ func (s *AerationService) Feedback(logID string, fb domain.FeedbackStatus, opera
 // the number of commands that timed out.
 func (s *AerationService) CheckTimeouts(now time.Time, requestID string) int {
 	count := 0
-	for i, log := range s.store.Aeration().ListPending() {
+	for _, log := range s.store.Aeration().ListPending() {
 		if !log.TimedOut(s.cfg.AeratorFeedbackTimeout, now) {
 			continue
 		}
@@ -117,7 +115,6 @@ func (s *AerationService) CheckTimeouts(now time.Time, requestID string) int {
 		if err := s.store.Aeration().Update(&log); err != nil {
 			continue
 		}
-		_ = i
 		count++
 		_, _ = s.audit.Record(domain.AuditAerationTimeout, "aeration", log.ID, "system",
 			fmt.Sprintf("aeration command %s timed out without feedback -> fault", log.ID), requestID, now)

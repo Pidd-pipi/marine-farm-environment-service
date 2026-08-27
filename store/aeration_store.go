@@ -101,9 +101,10 @@ func (a *AerationStore) ListPending() []domain.AerationLog {
 	defer a.s.mu.RUnlock()
 	out := make([]domain.AerationLog, 0)
 	for i := range a.s.state.Aeration {
-		if a.s.state.Aeration[i].Status == domain.AeratorStatusRunning {
-			out = append(out, cloneAerationLog(a.s.state.Aeration[i]))
+		if a.s.state.Aeration[i].HasTerminalFeedback() {
+			continue
 		}
+		out = append(out, cloneAerationLog(a.s.state.Aeration[i]))
 	}
 	return out
 }

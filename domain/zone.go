@@ -137,7 +137,8 @@ var zoneTransitionTable = map[ZoneStatus]map[ZoneStatus]bool{
 		ZoneStatusDanger: true,
 	},
 	ZoneStatusDanger: {
-		ZoneStatusWarning: true,
+		ZoneStatusWarning:  true,
+		ZoneStatusAerating: true,
 	},
 	ZoneStatusAerating: {
 		ZoneStatusDanger:   true,

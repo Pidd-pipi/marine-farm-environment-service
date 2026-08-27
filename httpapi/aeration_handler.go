@@ -68,7 +68,7 @@ func (h *AerationHandler) Feedback(w http.ResponseWriter, r *http.Request) {
 		Err(w, r, domain.InvalidInput("invalid feedback %q", req.Feedback))
 		return
 	}
-	log, err := h.svc.Aeration.Feedback(pathValue(r, "id"), domain.FeedbackAcknowledged, operatorName(r), requestIDFrom(r))
+	log, err := h.svc.Aeration.Feedback(pathValue(r, "id"), fb, operatorName(r), requestIDFrom(r))
 	if err != nil {
 		Err(w, r, err)
 		return
