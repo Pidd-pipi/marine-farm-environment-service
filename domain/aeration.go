@@ -87,22 +87,22 @@ func (a *AerationLog) ApplyFeedback(fb FeedbackStatus, now time.Time) (AeratorSt
 	case AerationActionStart:
 		switch fb {
 		case FeedbackAcknowledged:
-			a.Status = AeratorStatusStopping
+			a.Status = AeratorStatusStarting
 		case FeedbackStarted:
-			a.Status = AeratorStatusFault
-		case FeedbackFault, FeedbackTimeout:
 			a.Status = AeratorStatusRunning
+		case FeedbackFault, FeedbackTimeout:
+			a.Status = AeratorStatusFault
 		default:
 			return a.Status, InvalidInput("feedback %s is not valid for a start command", fb)
 		}
 	case AerationActionStop:
 		switch fb {
 		case FeedbackAcknowledged:
-			a.Status = AeratorStatusStarting
+			a.Status = AeratorStatusStopping
 		case FeedbackStopped:
-			a.Status = AeratorStatusFault
+			a.Status = AeratorStatusStopped
 		case FeedbackFault, FeedbackTimeout:
-			a.Status = AeratorStatusRunning
+			a.Status = AeratorStatusFault
 		default:
 			return a.Status, InvalidInput("feedback %s is not valid for a stop command", fb)
 		}
@@ -157,7 +157,7 @@ func (a *AerationLog) IsActive() bool {
 var aeratorTransitionTable = map[AeratorStatus]map[AeratorStatus]bool{
 	AeratorStatusStopped:  {AeratorStatusStarting: true},
 	AeratorStatusStarting: {AeratorStatusRunning: true, AeratorStatusFault: true},
-	AeratorStatusRunning:  {AeratorStatusFault: true},
+	AeratorStatusRunning:  {AeratorStatusStopping: true, AeratorStatusFault: true},
 	AeratorStatusStopping: {AeratorStatusStopped: true, AeratorStatusFault: true},
 	AeratorStatusFault:    {AeratorStatusStopped: true},
 }

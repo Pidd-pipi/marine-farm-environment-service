@@ -38,13 +38,13 @@ func NewFarmLog(id, zoneID, date string, feedAmount float64, deathCount int, dis
 }
 
 // EvaluateDeathAbnormal reports whether a single-day death count exceeds
-// the abnormal share of the zone stock (spec: > 1%).
+// the abnormal share of the zone stock (spec: > 1%, strictly greater than).
 func EvaluateDeathAbnormal(deathCount, stock int, ratio float64) bool {
 	if stock <= 0 || ratio <= 0 {
 		return false
 	}
 	limit := float64(stock) * ratio
-	return float64(deathCount) >= limit
+	return float64(deathCount) > limit
 }
 
 // ValidateLogInput validates the business fields of a farm log request.

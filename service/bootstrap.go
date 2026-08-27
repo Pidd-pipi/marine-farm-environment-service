@@ -38,6 +38,7 @@ func (b *Bootstrap) SeedIfEmpty() error {
 	// through the legal state-machine path: warning -> danger -> aerating.
 	_ = z2.SetStatus(domain.ZoneStatusWarning, now.Add(-35*time.Minute))
 	_ = z3.SetStatus(domain.ZoneStatusWarning, now.Add(-80*time.Minute))
+	_ = z3.SetStatus(domain.ZoneStatusDanger, now.Add(-65*time.Minute))
 	_ = z3.SetStatus(domain.ZoneStatusAerating, now.Add(-50*time.Minute))
 
 	for _, z := range []*domain.FarmZone{z1, z2, z3} {
