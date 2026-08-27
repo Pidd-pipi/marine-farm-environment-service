@@ -57,6 +57,8 @@ func Err(w http.ResponseWriter, r *http.Request, err error) {
 			status = http.StatusBadRequest
 		case domain.CodeUnauthorized:
 			status = http.StatusUnauthorized
+		case domain.CodeConflict:
+			status = http.StatusConflict
 		default:
 			status = http.StatusInternalServerError
 		}

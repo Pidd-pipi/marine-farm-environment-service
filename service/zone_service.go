@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"math"
 	"time"
 
@@ -70,13 +69,12 @@ func (s *ZoneService) Create(req CreateZoneRequest) (domain.FarmZone, error) {
 	return *zone, nil
 }
 
-// Get returns one zone.
+// Get returns one zone. The store error is returned verbatim so its domain
+// error code (e.g. CodeNotFound) is preserved end-to-end through to the HTTP
+// response; wrapping it with fmt.Errorf would strip the typed error and make
+// a missing zone surface as a 500 instead of a 404.
 func (s *ZoneService) Get(id string) (domain.FarmZone, error) {
-	z, err := s.store.Zones().Get(id)
-	if err != nil {
-		return domain.FarmZone{}, fmt.Errorf("zone service get %s: %v", id, err)
-	}
-	return z, nil
+	return s.store.Zones().Get(id)
 }
 
 // List returns all zones.

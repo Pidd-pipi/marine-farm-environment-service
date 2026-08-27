@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"math"
 	"time"
 
@@ -58,13 +57,12 @@ func (s *BuoyService) Create(req CreateBuoyRequest) (domain.Buoy, error) {
 	return *buoy, nil
 }
 
-// Get returns one buoy.
+// Get returns one buoy. The store error is returned verbatim so its domain
+// error code (e.g. CodeNotFound) is preserved end-to-end through to the HTTP
+// response; wrapping it with fmt.Errorf would strip the typed error and make
+// a missing buoy surface as a 500 instead of a 404.
 func (s *BuoyService) Get(id string) (domain.Buoy, error) {
-	b, err := s.store.Buoys().Get(id)
-	if err != nil {
-		return domain.Buoy{}, fmt.Errorf("buoy service get %s: %v", id, err)
-	}
-	return b, nil
+	return s.store.Buoys().Get(id)
 }
 
 // List returns all buoys.
