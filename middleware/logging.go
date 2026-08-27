@@ -12,7 +12,7 @@ import (
 func RequestLoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		rec := &logStatusRecorder{ResponseWriter: w, status: http.StatusOK}
+		rec := &logStatusRecorder{ResponseWriter: w, status: 0}
 		next.ServeHTTP(rec, r)
 		slog.Info("http request",
 			"method", r.Method,

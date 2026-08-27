@@ -44,7 +44,7 @@ func (h *FarmLogHandler) Create(w http.ResponseWriter, r *http.Request) {
 		RequestID:   requestIDFrom(r),
 	})
 	if err != nil {
-		Err(w, r, fmt.Errorf("create farm log: %v", err))
+		Err(w, r, fmt.Errorf("create farm log: %w", err))
 		return
 	}
 	Created(w, r, log)
@@ -67,7 +67,7 @@ func (h *FarmLogHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *FarmLogHandler) Get(w http.ResponseWriter, r *http.Request) {
 	log, err := h.svc.FarmLog.Get(pathValue(r, "id"))
 	if err != nil {
-		Err(w, r, fmt.Errorf("get farm log: %v", err))
+		Err(w, r, fmt.Errorf("get farm log: %w", err))
 		return
 	}
 	OK(w, r, log)

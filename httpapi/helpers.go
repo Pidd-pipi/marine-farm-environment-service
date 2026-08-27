@@ -3,7 +3,6 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -42,13 +41,15 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst interface{}) error {
 }
 
 // bodyError translates a JSON decoding error into a stable 400-style
-// invalid-input error, including oversized-body detection.
+// invalid-input domain error so Err() maps it to http.StatusBadRequest.
+// Returning a plain fmt.Errorf here would lose the domain code and every
+// malformed/oversized body would surface as a 500 "internal" error.
 func bodyError(err error) error {
 	var maxErr *http.MaxBytesError
 	if errors.As(err, &maxErr) {
-		return fmt.Errorf("request body too large (limit %d bytes)", maxJSONBodyBytes)
+		return domain.InvalidInput("request body too large (limit %d bytes)", maxJSONBodyBytes)
 	}
-	return fmt.Errorf("malformed JSON body: %v", err)
+	return domain.InvalidInput("malformed JSON body: %v", err)
 }
 
 // operatorName returns the operator header or a default.
