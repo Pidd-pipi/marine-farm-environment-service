@@ -66,14 +66,15 @@ func (b *SampleStore) ListByBuoy(buoyID string, limit int) []domain.WaterSample 
 }
 
 // ListByZone returns the most recent `limit` samples of a zone, newest
-// first.
+// first. Each element is deep-copied so mutating a returned sample (for
+// example editing its Violations slice) can never leak back into the store.
 func (b *SampleStore) ListByZone(zoneID string, limit int) []domain.WaterSample {
 	b.s.mu.RLock()
 	defer b.s.mu.RUnlock()
 	out := make([]domain.WaterSample, 0)
 	for i := range b.s.state.Samples {
 		if b.s.state.Samples[i].ZoneID == zoneID {
-			out = append(out, b.s.state.Samples[i])
+			out = append(out, cloneWaterSample(b.s.state.Samples[i]))
 		}
 	}
 	return sortSamplesDesc(out, limit)
@@ -148,7 +149,7 @@ func (b *SampleStore) LatestByZone(zoneID string) (domain.WaterSample, bool) {
 	if latest == nil {
 		return domain.WaterSample{}, false
 	}
-	return *latest, true
+	return cloneWaterSample(*latest), true
 }
 
 // Count returns the total number of samples.

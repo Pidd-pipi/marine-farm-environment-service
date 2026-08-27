@@ -177,8 +177,11 @@ func randomToken(n int) string {
 func (s *Store) NewToken(n int) string { return randomToken(n) }
 
 // Count returns the total number of persisted entities of each kind; used
-// by the health endpoint and overview aggregation.
+// by the health endpoint and overview aggregation. It takes the read lock so
+// it never observes a slice mid-append/mid-realloc from a concurrent writer.
 func (s *Store) Count() map[string]int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return map[string]int{
 		"zones":    len(s.state.Zones),
 		"buoys":    len(s.state.Buoys),
@@ -190,18 +193,30 @@ func (s *Store) Count() map[string]int {
 	}
 }
 
-// Snapshot returns a view of the whole state for read paths that need
-// consistent multi-entity views (overview aggregation, bootstrap).
+// Snapshot returns a consistent, fully isolated copy of the whole state for
+// read paths that need a multi-entity view (overview aggregation, bootstrap).
+//
+// It takes the read lock for the duration of the copy, so it never races with
+// a concurrent writer that is appending to or reallocating one of the slices
+// (the historical symptom was the overview sample count flickering between
+// reads taken in the same second). Every slice is deep-copied element by
+// element via the clone helpers, so mutating a returned entity or one of its
+// nested slices (e.g. WaterSample.Violations) can never leak back into the
+// store — callers receive values they fully own.
 func (s *Store) Snapshot() State {
-	out := State{Version: s.state.Version}
-	out.Zones = s.state.Zones
-	out.Buoys = s.state.Buoys
-	out.Samples = s.state.Samples
-	out.Warnings = s.state.Warnings
-	out.Aeration = s.state.Aeration
-	out.FarmLogs = s.state.FarmLogs
-	out.Audit = s.state.Audit
-	out.Seq = s.state.Seq
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := State{
+		Version: s.state.Version,
+		Seq:     cloneSeq(s.state.Seq),
+	}
+	out.Zones = cloneFarmZoneSlice(s.state.Zones)
+	out.Buoys = cloneBuoySlice(s.state.Buoys)
+	out.Samples = cloneWaterSampleSlice(s.state.Samples)
+	out.Warnings = cloneWarningRecordSlice(s.state.Warnings)
+	out.Aeration = cloneAerationLogSlice(s.state.Aeration)
+	out.FarmLogs = cloneFarmLogSlice(s.state.FarmLogs)
+	out.Audit = cloneAuditEntrySlice(s.state.Audit)
 	return out
 }
 
