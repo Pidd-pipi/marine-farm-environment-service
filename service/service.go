@@ -54,12 +54,12 @@ func New(cfg *config.Config, st *store.Store) *Services {
 }
 
 // StartSweepers launches the background restore checker. It stops when the
-// context is cancelled.
+// context is cancelled so the sweeper never outlives the service.
 func (s *Services) StartSweepers(ctx context.Context) <-chan struct{} {
 	done := make(chan struct{})
 	go func() {
-		s.Restore.Run(context.Background())
-		close(done)
+		defer close(done)
+		s.Restore.Run(ctx)
 	}()
 	slog.Info("restore checker started", "interval", s.Cfg.RestoreCheckInterval)
 	return done

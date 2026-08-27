@@ -33,21 +33,26 @@ func StartTime(ctx context.Context) time.Time {
 	return time.Time{}
 }
 
-// WithRequestID returns a context carrying the given trace id.
+// WithRequestID returns a context carrying the given trace id. It derives
+// from the supplied parent so request-scoped cancellation propagates: a
+// client disconnect cancels the parent, which cancels every child context
+// built on top of it.
 func WithRequestID(ctx context.Context, id string) context.Context {
-	return context.WithValue(context.Background(), ctxKeyRequestID, id)
+	return context.WithValue(ctx, ctxKeyRequestID, id)
 }
 
 // RequestIDMiddleware injects a trace id into every request. An incoming
-// X-Request-Id header is honoured when present.
+// X-Request-Id header is honoured when present. The values are attached to
+// the request's own context (r.Context()) so client-side cancellation keeps
+// flowing through to handlers and services downstream.
 func RequestIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get("X-Request-Id")
 		if id == "" {
 			id = newRequestID()
 		}
-		ctx := context.WithValue(context.Background(), ctxKeyRequestID, id)
-		ctx = context.WithValue(context.Background(), ctxKeyStartTime, time.Now())
+		ctx := WithRequestID(r.Context(), id)
+		ctx = context.WithValue(ctx, ctxKeyStartTime, time.Now())
 		w.Header().Set("X-Request-Id", id)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

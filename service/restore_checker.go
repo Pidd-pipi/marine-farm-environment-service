@@ -35,17 +35,25 @@ func NewRestoreChecker(cfg *config.Config, st *store.Store, aeration *AerationSe
 	return &RestoreChecker{cfg: cfg, store: st, aeration: aeration, audit: audit}
 }
 
-// Run loops the checker until the context is cancelled.
+// Run loops the checker until the context is cancelled. It returns as soon
+// as ctx is done so the background goroutine started by StartSweepers does
+// not outlive the service and leak the ticker.
 func (r *RestoreChecker) Run(ctx context.Context) {
 	ticker := time.NewTicker(r.cfg.RestoreCheckInterval)
+	defer ticker.Stop()
 	r.RunOnce(time.Now().UTC())
-	for range ticker.C {
-		res := r.RunOnce(time.Now().UTC())
-		if res.RestoreEligible > 0 || res.AeratorTimeouts > 0 {
-			slog.Info("restore checker sweep done",
-				"zones", res.CheckedZones,
-				"eligible", res.RestoreEligible,
-				"timeouts", res.AeratorTimeouts)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			res := r.RunOnce(time.Now().UTC())
+			if res.RestoreEligible > 0 || res.AeratorTimeouts > 0 {
+				slog.Info("restore checker sweep done",
+					"zones", res.CheckedZones,
+					"eligible", res.RestoreEligible,
+					"timeouts", res.AeratorTimeouts)
+			}
 		}
 	}
 }
