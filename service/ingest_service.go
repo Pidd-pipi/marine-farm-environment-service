@@ -215,15 +215,19 @@ func (s *IngestService) validateReportTime(buoy domain.Buoy, ts, now time.Time) 
 	if ts.After(now.Add(5 * time.Minute)) {
 		return domain.InvalidInput("timestamp %s is too far in the future", ts.Format(time.RFC3339))
 	}
-	last := *buoy.LastReportAt
-	if ts.Before(last) {
-		return domain.InvalidInput("timestamp %s is before the buoy's last report %s", ts.Format(time.RFC3339), last.Format(time.RFC3339))
-	}
-	minGap := s.cfg.SamplePeriod - s.cfg.SamplePeriodTolerance
-	if minGap > 0 && ts.Sub(last) < minGap {
-		return domain.Conflict(
-			"buoy %s reporting too frequently: %v since last report, minimum interval %v",
-			buoy.ID, ts.Sub(last).Round(time.Second), minGap.Round(time.Second))
+	// A buoy reporting for the first time has no prior reading to compare
+	// against, so the ordering and minimum-gap checks do not apply.
+	if buoy.LastReportAt != nil {
+		last := *buoy.LastReportAt
+		if ts.Before(last) {
+			return domain.InvalidInput("timestamp %s is before the buoy's last report %s", ts.Format(time.RFC3339), last.Format(time.RFC3339))
+		}
+		minGap := s.cfg.SamplePeriod - s.cfg.SamplePeriodTolerance
+		if minGap > 0 && ts.Sub(last) < minGap {
+			return domain.Conflict(
+				"buoy %s reporting too frequently: %v since last report, minimum interval %v",
+				buoy.ID, ts.Sub(last).Round(time.Second), minGap.Round(time.Second))
+		}
 	}
 	return nil
 }

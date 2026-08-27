@@ -94,12 +94,13 @@ func (s *OverviewService) Get() Overview {
 		zo := ZoneOverview{Zone: z, LatestDO: -1}
 		zo.Buoys = buoysByZone[z.ID]
 		zo.BuoyCount = len(zo.Buoys)
-		latest := latestByZone[z.ID]
-		latestCopy := *latest
-		zo.LatestSample = &latestCopy
-		zo.LatestDO = latest.DO
-		ts := latest.Timestamp
-		zo.LatestSampleAt = &ts
+		if latest := latestByZone[z.ID]; latest != nil {
+			latestCopy := *latest
+			zo.LatestSample = &latestCopy
+			zo.LatestDO = latest.DO
+			ts := latest.Timestamp
+			zo.LatestSampleAt = &ts
+		}
 		for i := range zo.Buoys {
 			b := &zo.Buoys[i]
 			if b.Stale(2*s.cfg.SamplePeriod, now) {
@@ -107,13 +108,21 @@ func (s *OverviewService) Get() Overview {
 			}
 		}
 		zo.OpenWarningCount = openWarningsIn(&snapshot, z.ID)
-		aer := aeratorByZone[z.ID]
-		zo.AeratorStatus = aer.Status
-		zo.AeratorAction = aer.Action
-		ts = aer.CommandTime
-		zo.LastAerationAt = &ts
-		if aer.IsActive() {
-			ov.Totals.ActiveAerators++
+		// A zone that has never issued an aeration command is idle: the
+		// aerator sits in the stopped state with no last-aeration timestamp.
+		var aer *domain.AerationLog
+		if aeratorByZone[z.ID] != nil {
+			aer = aeratorByZone[z.ID]
+			zo.AeratorStatus = aer.Status
+			zo.AeratorAction = aer.Action
+			ts := aer.CommandTime
+			zo.LastAerationAt = &ts
+			if aer.IsActive() {
+				ov.Totals.ActiveAerators++
+			}
+		} else {
+			zo.AeratorStatus = domain.AeratorStatusStopped
+			zo.AeratorAction = domain.AerationActionStop
 		}
 		ov.Zones = append(ov.Zones, zo)
 	}

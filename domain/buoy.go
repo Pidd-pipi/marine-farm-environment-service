@@ -69,7 +69,12 @@ func (b *Buoy) RecordReport(do float64, at time.Time) {
 }
 
 // Stale reports whether the buoy has not reported within `window`.
+// A buoy that has never reported (LastReportAt is nil) is considered stale,
+// since it has no recent reading to serve the overview.
 func (b *Buoy) Stale(window time.Duration, now time.Time) bool {
+	if b.LastReportAt == nil {
+		return true
+	}
 	return now.Sub(*b.LastReportAt) > window
 }
 
