@@ -3,6 +3,7 @@ package middleware
 import (
 	"log/slog"
 	"net/http"
+	"sync/atomic"
 	"time"
 )
 
@@ -11,8 +12,8 @@ import (
 // trace id.
 func RequestLoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		activeRequests++
-		defer func() { activeRequests-- }()
+		atomic.AddInt64(&activeRequests, 1)
+		defer atomic.AddInt64(&activeRequests, -1)
 		start := time.Now()
 		rec := &logStatusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
@@ -28,6 +29,14 @@ func RequestLoggerMiddleware(next http.Handler) http.Handler {
 }
 
 var activeRequests int64
+
+// ActiveRequests returns the number of requests currently being served.
+// Reads of a concurrently mutated counter must go through the atomic API;
+// a plain int64 read would race with the increments in
+// RequestLoggerMiddleware and undercount under load.
+func ActiveRequests() int64 {
+	return atomic.LoadInt64(&activeRequests)
+}
 
 type logStatusRecorder struct {
 	http.ResponseWriter

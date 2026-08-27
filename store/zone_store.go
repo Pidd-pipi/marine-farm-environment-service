@@ -18,13 +18,16 @@ func (z *ZoneStore) Create(zone *domain.FarmZone) error {
 	return z.s.saveLocked()
 }
 
-// Get returns a copy of the zone with the given id.
+// Get returns a copy of the zone with the given id. FarmZone carries a
+// *time.Time (RestoreEligibleAt), so the copy must deep-copy that pointer;
+// otherwise callers (restore checker, ingest) that mutate the returned zone
+// would race against / corrupt the store's internal state.
 func (z *ZoneStore) Get(id string) (domain.FarmZone, error) {
 	z.s.mu.RLock()
 	defer z.s.mu.RUnlock()
 	for i := range z.s.state.Zones {
 		if z.s.state.Zones[i].ID == id {
-			return z.s.state.Zones[i], nil
+			return cloneFarmZone(z.s.state.Zones[i]), nil
 		}
 	}
 	return domain.FarmZone{}, domain.NotFound("farm zone", id)
@@ -36,7 +39,7 @@ func (z *ZoneStore) List() []domain.FarmZone {
 	defer z.s.mu.RUnlock()
 	out := make([]domain.FarmZone, 0, len(z.s.state.Zones))
 	for i := range z.s.state.Zones {
-		out = append(out, z.s.state.Zones[i])
+		out = append(out, cloneFarmZone(z.s.state.Zones[i]))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.Before(out[j].CreatedAt) })
 	return out

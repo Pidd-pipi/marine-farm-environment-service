@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"example.com/marine-farm-environment-service/domain"
@@ -19,6 +20,11 @@ type AuditLogger struct {
 	skipPaths []string
 	// maxEntries caps the audit trail size.
 	maxEntries int
+	// countsMu guards counts; the audit middleware runs concurrently so the
+	// per-path request counts must be protected against simultaneous map
+	// writes (a plain map write is a fatal "concurrent map writes" under
+	// load).
+	countsMu sync.Mutex
 	// counts tracks how many requests hit each path.
 	counts map[string]int
 }
@@ -45,7 +51,9 @@ func (m *AuditLogger) Wrap(next http.Handler) http.Handler {
 			}
 		}
 		latency := time.Since(start).Milliseconds()
+		m.countsMu.Lock()
 		m.counts[path]++
+		m.countsMu.Unlock()
 		entry := domain.NewAuditEntry(
 			m.store.NewID("audit"),
 			domain.AuditHTTPRequest,
